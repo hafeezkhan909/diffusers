@@ -3,6 +3,8 @@ import os
 from diffusers import StableDiffusion3Pipeline
 import argparse
 import json
+from qwen_integration import get_refined_prompt
+import shutil
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run the diffusion pipeline with user-defined restart points.")
@@ -96,11 +98,12 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
             vanilla_generation=True,
             refinement_step=refinement_step,
             output_dir=prompt_output_dir,
-            save_latents_mode=True  # ✅ Save latents internally
+            save_latents_mode=True , # ✅ Save latents internally
+            save_latents_refinement_mode=True
         ).images[0]
         print("[Step 1] Latents saved at specified steps.\n")
 
-        initial_image_path = os.path.join(prompt_output_dir, f"final_image.png")
+        initial_image_path = os.path.join(prompt_output_dir, "final_image.png")
         image.save(initial_image_path)
         print(f"Step 1 image saved as {initial_image_path}\n")
 
@@ -111,16 +114,33 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
             print(f"\n[Step {idx + 2}] Using refinement image: {prev_refinement_image} for Qwen")
 
             # ✅ Uncomment when Qwen is integrated
-            # full_output = get_refined_prompt(current_prompt, prev_refinement_image, tag)
-            # decision, refined_prompt = parse_qwen_output(full_output)
-            
-            # ✅ For now, just use a random refined prompt
+            full_output = get_refined_prompt(prompt, prev_refinement_image, tag)
+            decision, refined_prompt = parse_qwen_output(full_output)
+            print(f"✅ Refining further: Refined Prompt for Step {step}: {refined_prompt}")
+
+            # Save Qwen output
+            refined_prompt_file = os.path.join(prompt_output_dir, f"{idx}_refined_prompt_{step}_.txt")
+            with open(refined_prompt_file, "w") as f:
+                f.write(full_output)
+
             if idx == 0:
-                decision, refined_prompt = True, f"A white cat on a couch under the sun"
-            elif idx == 1:
-                decision, refined_prompt = True, f"A white bird on a couch under the sun"
+              if decision == "True":
+                    print(f"✅ Early stopping at {idx+1} iter, image matches the prompt.")
+                    shutil.copy(os.path.join(prompt_output_dir, "final_image.png"), os.path.join(prompt_output_dir, f"ES{idx+1}_final_image.png"))
             else:
-                decision, refined_prompt = True, f"A white lion on a couch under the sun"
+                if decision == "True":
+                    print(f"✅ Early stopping at {idx+1} iter, image matches the prompt.")
+                    prev_restart_step = restart_steps[idx - 1]  # Get the previous restart step
+                    shutil.copy(os.path.join(prompt_output_dir, f"final_{idx}_refined_{prev_restart_step}_.png"), os.path.join(prompt_output_dir, f"ES{idx+1}_final_image.png"))
+
+
+            # ✅ For now, just use a random refined prompt
+            # if idx == 0:
+            #     decision, refined_prompt = True, f"A white cat on a couch under the sun"
+            # elif idx == 1:
+            #     decision, refined_prompt = True, f"A white bird on a couch under the sun"
+            # else:
+            #     decision, refined_prompt = True, f"A white lion on a couch under the sun"
 
             print(f"[Step {idx + 2}] Refining from saved latents at step {step} with new prompt: {refined_prompt}...")
             saved_data = torch.load(os.path.join(prompt_output_dir, f"latents_{step}.pt"))
@@ -144,8 +164,9 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
             image.save(refined_image_path)
             print(f"[Step {idx + 2}] Refined image saved as {refined_image_path}\n")
 
+            prev_latent_image_path = os.path.join(prompt_output_dir, f"{step}_refined_{refinement_step}_.png")
             # ✅ Update the refinement image path for the next iteration
-            prev_refinement_image = refined_image_path
+            prev_refinement_image = prev_latent_image_path
 
         print(f"\n✅ Completed processing for tag: {tag}")
 
