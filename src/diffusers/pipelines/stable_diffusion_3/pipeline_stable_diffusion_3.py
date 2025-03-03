@@ -808,6 +808,7 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
         restart_steps: List[int] = None,
         vanilla_generation: bool = False,
         save_latents_mode: bool = False,
+        save_latents_refinement_mode: bool = False,
         resume_mode: bool = False,
         output_dir: Optional[str] = "./set_dir",
         index: int = None,
@@ -1073,7 +1074,7 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
 
                 
                 # ✅ If in SAVE LATENTS MODE, save latents at refinement_step
-                if save_latents_mode and i == refinement_step:
+                if save_latents_refinement_mode and i == refinement_step:
                     print(f"Saving latents at step {refinement_step} for Qwen")
                     latent_path = os.path.join(output_dir, f"latents_{i}.pt")
                     torch.save({"latents": latents.clone().detach()}, latent_path)  # ✅ Save instead of return
@@ -1085,11 +1086,11 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
                     if vanilla_generation:
                         image_path = os.path.join(output_dir, f"initial_step_{refinement_step}.png")
                         image.save(image_path)
-                        print(f"Decoded image saved as {image_path}")
+                        print(f"Decoded latent image saved as {image_path}")
                     else:
                         image_path = os.path.join(output_dir, f"{resume_step-1}_step_{refinement_step}.png")
                         image.save(image_path)
-                        print(f"Decoded image saved as {image_path}")
+                        print(f"Decoded latent image saved as {image_path}")
 
                 # ===== PROMPT SWITCHING LOGIC =====
                 # if i < resume_step: # Use this part when running test2
