@@ -120,6 +120,8 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
             full_output = get_refined_prompt(prompt, prev_refinement_image, tag)
             decision, refined_prompt = parse_qwen_output(full_output)
             print(f"✅ Refining further: Refined Prompt for Step {step}: {refined_prompt}")
+
+            # (For Hafeez) Uncomment to debug
             # if idx == 0:
             #     decision, refined_prompt = True, f"A white cat on a couch under the sun"
             # elif idx == 1:
@@ -127,6 +129,7 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
             # else:
             #     decision, refined_prompt = True, f"A white lion on a couch under the sun"
             # print(f"✅ Refining further: Refined Prompt for Step {step}: {refined_prompt}")
+            
             # Save Qwen output
             refined_prompt_file = os.path.join(prompt_output_dir, f"{idx}_refined_prompt_{step}_.txt")
             with open(refined_prompt_file, "w") as f:
