@@ -118,19 +118,20 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
             else: 
                 print(f"\n[Step {idx + 2}] Using refinement image: {prev_refinement_image} for Qwen")
                 full_output = get_refined_prompt(prompt, prev_refinement_image, tag)
-            # ✅ Uncomment when Qwen is integrated
+            
+            # Uncomment when Qwen is integrated
             
             decision, refined_prompt = parse_qwen_output(full_output)
             print(f"✅ Refining further: Refined Prompt for Step {step}: {refined_prompt}")
 
             # (For Hafeez) Uncomment to debug
             # if idx == 0:
-            #     decision, refined_prompt = True, f"A white cat on a couch under the sun"
+            #     decision, refined_prompt = "True", f"A white cat on a couch under the sun"
             # elif idx == 1:
-            #     decision, refined_prompt = True, f"A white bird on a couch under the sun"
+            #     decision, refined_prompt = "True", f"A white bird on a couch under the sun"
             # else:
-            #     decision, refined_prompt = True, f"A white lion on a couch under the sun"
-            # print(f"✅ Refining further: Refined Prompt for Step {step}: {refined_prompt}")
+            #     decision, refined_prompt = "True", f"A white lion on a couch under the sun"
+            # print(f"Decision: {decision}, Refining further: Refined Prompt for Step {step}: {refined_prompt}")
 
             # Save Qwen output
             refined_prompt_file = os.path.join(prompt_output_dir, f"{idx}_refined_prompt_{step}_.txt")
@@ -140,7 +141,7 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
             if idx == 0:
               if decision == "True":
                     print(f"✅ Early stopping at {idx+1} iter, image matches the prompt.")
-                    shutil.copy(os.path.join(prompt_output_dir, "final_image.png"), os.path.join(prompt_output_dir, f"ES{idx+1}_final_image.png"))
+                    shutil.copy(initial_image_path, os.path.join(prompt_output_dir, f"ES{idx+1}_final_image.png"))
             else:
                 if decision == "True":
                     print(f"✅ Early stopping at {idx+1} iter, image matches the prompt.")
