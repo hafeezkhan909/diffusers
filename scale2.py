@@ -108,16 +108,25 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
         print(f"Step 1 image saved as {initial_image_path}\n")
 
         # ✅ Step 2: Iteratively Resume Generation for Each Resume Step
-        prev_refinement_image = os.path.join(prompt_output_dir, f"initial_step_{refinement_step}.png")  # First iteration uses Step_37 from initial generation
-        
+        first_refinement_image = os.path.join(prompt_output_dir, f"initial_step_{refinement_step}.png")  # First iteration uses Step_37 from initial generation
+        prev_refinement_image=None
         for idx, step in enumerate(restart_steps):
-            print(f"\n[Step {idx + 2}] Using refinement image: {prev_refinement_image} for Qwen")
 
+            if idx == 0:
+                print(f"\n[Step {idx + 2}] Using refinement image: {first_refinement_image} for Qwen")
+            else: 
+                print(f"\n[Step {idx + 2}] Using refinement image: {prev_refinement_image} for Qwen")
             # ✅ Uncomment when Qwen is integrated
             full_output = get_refined_prompt(prompt, prev_refinement_image, tag)
             decision, refined_prompt = parse_qwen_output(full_output)
             print(f"✅ Refining further: Refined Prompt for Step {step}: {refined_prompt}")
-
+            # if idx == 0:
+            #     decision, refined_prompt = True, f"A white cat on a couch under the sun"
+            # elif idx == 1:
+            #     decision, refined_prompt = True, f"A white bird on a couch under the sun"
+            # else:
+            #     decision, refined_prompt = True, f"A white lion on a couch under the sun"
+            # print(f"✅ Refining further: Refined Prompt for Step {step}: {refined_prompt}")
             # Save Qwen output
             refined_prompt_file = os.path.join(prompt_output_dir, f"{idx}_refined_prompt_{step}_.txt")
             with open(refined_prompt_file, "w") as f:
@@ -153,10 +162,12 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
                 guidance_scale=7.5, 
                 latents=latents_resumed,
                 index=index,
+                output_dir=prompt_output_dir,
                 restart_steps=restart_steps,
                 resume_step=step + 1,  # ✅ Start from the next step of the saved latent
                 refinement_step=refinement_step,  # ✅ Save new refinement image
-                resume_mode=True  # ✅ Resume from latents
+                resume_mode=True,  # ✅ Resume from latents
+                save_latents_refinement_mode=True
             ).images[0]
 
             # ✅ Save the modified image final_{idx+1}_refined_{step}_
@@ -164,10 +175,9 @@ def process_tag(tag, prompts, output_dir, restart_steps, refinement_step):
             image.save(refined_image_path)
             print(f"[Step {idx + 2}] Refined image saved as {refined_image_path}\n")
 
-            prev_latent_image_path = os.path.join(prompt_output_dir, f"{step}_refined_{refinement_step}_.png")
             # ✅ Update the refinement image path for the next iteration
-            prev_refinement_image = prev_latent_image_path
-
+            prev_refinement_image = os.path.join(prompt_output_dir, f"{step}_step_{refinement_step}.png")
+            
         print(f"\n✅ Completed processing for tag: {tag}")
 
 def main():
