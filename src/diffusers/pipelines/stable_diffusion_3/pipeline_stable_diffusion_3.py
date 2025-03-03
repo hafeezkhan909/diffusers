@@ -14,7 +14,7 @@
 
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Union
-
+import os
 import torch
 from transformers import (
     CLIPTextModelWithProjection,
@@ -804,6 +804,14 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
         skip_layer_guidance_stop: float = 0.2,
         skip_layer_guidance_start: float = 0.01,
         mu: Optional[float] = None,
+        resume_step: int = None, #List[float] = None, # ✅ Allows returning intermediate latents at step 25
+        restart_steps: List[int] = None,
+        vanilla_generation: bool = False,
+        save_latents_mode: bool = False,
+        resume_mode: bool = False,
+        output_dir: Optional[str] = "./set_dir",
+        index: int = None,
+        refinement_step: int = None  # ✅ Image passed to Qwen
     ):
         r"""
         Function invoked when calling the pipeline for generation.
@@ -1051,6 +1059,76 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
             for i, t in enumerate(timesteps):
                 if self.interrupt:
                     continue
+                
+                # ✅ If in RESUME MODE, skip until reaching resume_step
+                if resume_mode and i < resume_step:
+                    progress_bar.update()
+                    continue
+
+                # ✅ If in SAVE LATENTS MODE, save latents at restart_steps
+                if save_latents_mode and i in restart_steps:
+                    print(f"Saving latents at step {i}")
+                    latent_path = os.path.join(output_dir, f"latents_{i}.pt")
+                    torch.save({"latents": latents.clone().detach()}, latent_path)  # ✅ Save instead of return
+
+                
+                # ✅ If in SAVE LATENTS MODE, save latents at refinement_step
+                if save_latents_mode and i == refinement_step:
+                    print(f"Saving latents at step {refinement_step} for Qwen")
+                    latent_path = os.path.join(output_dir, f"latents_{i}.pt")
+                    torch.save({"latents": latents.clone().detach()}, latent_path)  # ✅ Save instead of return
+                    # ✅ Decode latents into an image
+                    latents_decoded = (latents / self.vae.config.scaling_factor) + self.vae.config.shift_factor
+                    image_tensor = self.vae.decode(latents_decoded, return_dict=False)[0]
+                    image = self.image_processor.postprocess(image_tensor, output_type=output_type)[0]
+                    # ✅ Save the decoded image
+                    if vanilla_generation:
+                        image_path = os.path.join(output_dir, f"initial_step_{refinement_step}.png")
+                        image.save(image_path)
+                        print(f"Decoded image saved as {image_path}")
+                    else:
+                        image_path = os.path.join(output_dir, f"{resume_step-1}_step_{refinement_step}.png")
+                        image.save(image_path)
+                        print(f"Decoded image saved as {image_path}")
+
+                # ===== PROMPT SWITCHING LOGIC =====
+                # if i < resume_step: # Use this part when running test2
+                #     progress_bar.update()
+                #     continue
+                # ✅ SAVE LATENTS AT RESUME STEP
+                # if i == resume_step and return_intermediate_latents: # Use this part when running test
+                #     print(f"Returning latents at step {resume_step}")
+                #     return latents.clone().detach()  # ✅ Ensure it's detached before saving
+
+                # # ✅ CHECK IF WE NEED TO SWITCH PROMPT
+                # if i == switch_step:
+                #     print(f"Switching prompt at step {switch_step} to '{new_prompt}'")
+                # if i == restart_step:  # Change prompt at step 20 (0-indexed)
+                #     new_prompt = "a white cat sitting on a couch"
+                    
+                #     # Re-encode prompts with new text
+                #     (prompt_embeds,
+                #     negative_prompt_embeds,
+                #     pooled_prompt_embeds,
+                #     negative_pooled_prompt_embeds) = self.encode_prompt(
+                #         prompt=new_prompt,
+                #         prompt_2=new_prompt,  # or different prompt_2 if needed
+                #         prompt_3=new_prompt,  # or different prompt_3 if needed
+                #         negative_prompt=negative_prompt,
+                #         negative_prompt_2=negative_prompt_2,
+                #         negative_prompt_3=negative_prompt_3,
+                #         do_classifier_free_guidance=self.do_classifier_free_guidance,
+                #         device=device,
+                #         num_images_per_prompt=num_images_per_prompt,
+                #         max_sequence_length=max_sequence_length,
+                #         lora_scale=lora_scale,
+                #     )
+
+                #     # Re-concat for CFG if needed
+                #     if self.do_classifier_free_guidance:
+                #         prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
+                #         pooled_prompt_embeds = torch.cat([negative_pooled_prompt_embeds, pooled_prompt_embeds], dim=0)
+                # # ===== END PROMPT SWITCHING =====
 
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents

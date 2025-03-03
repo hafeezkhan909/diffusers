@@ -1,0 +1,52 @@
+{
+    "generative": [
+        {
+            "prompt": "a photo of an aeroplane",
+            "line_number": 1
+        },
+        {
+            "prompt": "a photo of a bag",
+            "line_number": 2
+        },
+        {
+            "prompt": "a photo of a bed",
+            "line_number": 3
+        }
+    ],
+    
+    "negation": [
+        {
+            "prompt": "A realistic photo of a scene without an aeroplane",
+            "line_number": 11
+        },
+        {
+            "prompt": "A realistic photo of a scene without a bag",
+            "line_number": 12
+        },
+        {
+            "prompt": "A realistic photo of a scene without a bed",
+            "line_number": 13
+        }
+    ],
+
+    "counting": [
+        {
+            "prompt": "A realistic photo of a scene with 1 car",
+            "line_number": 21
+        }
+    ],
+
+    "color_attr": [
+        {
+            "prompt": "A realistic photo of a scene with a black and white panda and a green tree",
+            "line_number": 31
+        }
+    ],
+
+    "position": [
+        {
+            "prompt": "A realistic photo of a scene with a backpack to the left of a notebook",
+            "line_number": 41
+        }
+    ]
+}
